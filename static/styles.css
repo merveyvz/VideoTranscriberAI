@@ -1,0 +1,12 @@
+body {
+    font-family: 'Arial', sans-serif;
+}
+
+.stButton > button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.stTextArea > div > div > textarea {
+    font-family: 'Courier New', monospace;
+}
