@@ -3,3 +3,4 @@ python-dotenv~=1.0.1
 openai~=1.43.0
 ffmpeg-python~=0.2.0
 yt-dlp
+pysrt==1.1.2
