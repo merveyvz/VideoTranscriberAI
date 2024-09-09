@@ -1,12 +1,39 @@
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f2f6;
+    color: #1f1f1f;
+}
+
+.stApp {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+h1 {
+    color: #0e1117;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
 }
 
 .stButton > button {
-    background-color: #4CAF50;
+    background-color: #ff4b4b;
     color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
 }
 
-.stTextArea > div > div > textarea {
-    font-family: 'Courier New', monospace;
+.stButton > button:hover {
+    background-color: #ff3333;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 4px;
+}
+
+.stSelectbox > div > div > select {
+    border-radius: 4px;
 }

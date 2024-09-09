@@ -1,9 +1,9 @@
+
 import yt_dlp
 import os
 
 
 def sanitize_filename(filename):
-    # Remove invalid characters and replace spaces with underscores
     return ''.join(c if c.isalnum() or c in ['-', '_'] else '_' for c in filename).rstrip()
 
 
@@ -11,7 +11,7 @@ def get_video_info(url):
     ydl_opts = {'format': 'bestaudio/best'}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
-        formats = [f for f in info['formats'] if f.get('vcodec') != 'none']
+        formats = [f for f in info['formats'] if f.get('vcodec') != 'none' and f.get('acodec') != 'none']
 
         processed_formats = []
         for f in formats:
@@ -26,9 +26,9 @@ def get_video_info(url):
 
 def download_youtube_video(url, output_path, format_id=None):
     ydl_opts = {
-        'format': f'{format_id}/bestaudio/best' if format_id else 'bestaudio/best',
+        'format': f'{format_id}/bestvideo+bestaudio/best' if format_id else 'bestvideo+bestaudio/best',
         'outtmpl': f'{output_path}.%(ext)s',
-        'progress_hooks': [lambda d: print(f'Downloaded {d["downloaded_bytes"]} bytes')],
+        'merge_output_format': 'mp4',
     }
 
     try:
