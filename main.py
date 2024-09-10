@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 
 import streamlit as st
 from app.services import AudioService, TranslationService, VideoService
@@ -81,26 +82,58 @@ def process_video_with_progress(video_source, video_url=None, video_file=None):
         raise
 
 
+def reset_state():
+    # Clear all session state variables
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+
+    # Clear all files in the temp directory
+    for filename in os.listdir(TEMP_DIR):
+        file_path = os.path.join(TEMP_DIR, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            logger.error(f'Failed to delete {file_path}. Reason: {e}')
+
+    # Reinitialize session state to default values
+    st.session_state.processed = False
+    st.session_state.video_path = None
+    st.session_state.transcript = None
+    st.session_state.srt_content = None
+    st.session_state.translations = {}
+    st.session_state.translated_languages = set()
+    st.session_state.video_source = "YouTube URL"
+    st.session_state.video_url = ""
+    st.session_state.target_languages = []
+
+
 def main():
     st.set_page_config(page_title="Video Transcription and Translation App", layout="wide")
     load_css()
     st.title("Video Transcription and Translation App")
 
+    # Initialize session state if it doesn't exist
     if 'processed' not in st.session_state:
-        st.session_state.processed = False
-        st.session_state.video_path = None
-        st.session_state.transcript = None
-        st.session_state.srt_content = None
-        st.session_state.translations = {}
-        st.session_state.translated_languages = set()
+        reset_state()
 
-    video_source = st.radio("Choose video source:", ("YouTube URL", "Upload Video"))
+    # Add a reset button
+    if st.button("Reset"):
+        reset_state()
+        st.rerun()
+
+    # Video source selection
+    video_source = st.radio("Choose video source:", ("YouTube URL", "Upload Video"), key="video_source")
+
     if video_source == "YouTube URL":
-        video_url = st.text_input("Enter YouTube URL:")
+        video_url = st.text_input("Enter YouTube URL:", key="video_url")
     else:
         video_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi"])
 
-    target_languages = st.multiselect("Select target languages for translation:", SUPPORTED_LANGUAGES)
+    target_languages = st.multiselect("Select target languages for translation:", SUPPORTED_LANGUAGES,
+                                      key="target_languages")
 
     if st.button("Process Video") or st.session_state.processed:
         try:
