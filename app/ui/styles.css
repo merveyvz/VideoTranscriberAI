@@ -1,39 +1,40 @@
 /* Main container */
 .main {
     padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
 }
 
-/* Headers */
-h1, h2, h3 {
-    color: #1E88E5;
-    margin-bottom: 1rem;
+/* Title */
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
 }
 
-/* Inputs */
-.stTextInput > div > div > input {
+/* Radio buttons */
+.stRadio > div {
+    flex-direction: row !important;
+}
+
+/* Text inputs and file uploader */
+.stTextInput > div > div > input,
+.stFileUploader > div > button {
     border-radius: 5px;
 }
 
 /* Buttons */
 .stButton > button {
     border-radius: 5px;
-    background-color: #1E88E5;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
     font-weight: bold;
 }
 
-.stButton > button:hover {
-    background-color: #1565C0;
+/* Progress bar */
+.stProgress > div > div > div {
+    background-color: #4CAF50;
 }
 
 /* Expander */
 .streamlit-expanderHeader {
+    font-size: 1.2rem;
     font-weight: bold;
-    color: #1E88E5;
 }
 
 /* Text areas */
@@ -41,12 +42,20 @@ h1, h2, h3 {
     border-radius: 5px;
 }
 
-/* File uploader */
-.stFileUploader > div > button {
+/* Download buttons */
+.stDownloadButton > button {
     border-radius: 5px;
+    background-color: #4CAF50;
+    color: white;
 }
 
 /* Multiselect */
 .stMultiSelect > div > div > div {
     border-radius: 5px;
+}
+
+.body{
+    text-align: center;
+    align-content: center;
+    justify-content: center;
 }

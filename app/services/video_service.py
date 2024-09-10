@@ -73,36 +73,6 @@ class VideoService:
             logger.error(f"Error preparing video for download: {str(e)}")
             raise
 
-    @staticmethod
-    def get_video_info(video_path):
-        try:
-            cmd = [
-                'ffprobe',
-                '-v', 'quiet',
-                '-print_format', 'json',
-                '-show_format',
-                '-show_streams',
-                video_path
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-            info = json.loads(result.stdout)
-
-            video_stream = next((s for s in info['streams'] if s['codec_type'] == 'video'), None)
-            if not video_stream:
-                raise ValueError("No video stream found in the file")
-
-            return {
-                'duration': float(info['format']['duration']),
-                'width': int(video_stream['width']),
-                'height': int(video_stream['height']),
-                'format': info['format']['format_name']
-            }
-        except json.JSONDecodeError:
-            logger.error("Failed to parse video information JSON")
-            raise ValueError("Unable to retrieve video information")
-        except Exception as e:
-            logger.error(f"Error getting video info: {str(e)}")
-            raise
 
     @staticmethod
     def generate_thumbnail(video_path):
