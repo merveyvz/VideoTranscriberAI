@@ -13,12 +13,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def is_valid_srt(content):
-    pattern = re.compile(r'\d+\s*\n\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}\s*\n', re.MULTILINE)
-    matches = pattern.findall(content)
-    return len(matches) > 0
-
-
 def download_progress_hook(d):
     if d['status'] == 'downloading':
         if 'total_bytes' in d:

@@ -63,18 +63,6 @@ class VideoService:
             raise
 
     @staticmethod
-    def prepare_video_for_download(video_path, output_filename):
-        try:
-            output_path = os.path.join(TEMP_DIR, output_filename)
-            shutil.copy2(video_path, output_path)
-            logger.info(f"Video prepared for download at {output_path}")
-            return output_path
-        except Exception as e:
-            logger.error(f"Error preparing video for download: {str(e)}")
-            raise
-
-
-    @staticmethod
     def generate_thumbnail(video_path):
         thumbnail_path = os.path.join(TEMP_DIR, 'thumbnail.jpg')
         cmd = [

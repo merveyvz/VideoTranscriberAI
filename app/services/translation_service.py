@@ -36,13 +36,6 @@ class TranslationService:
         return response.choices[0].message.content.strip()
 
     @staticmethod
-    def format_srt(translations):
-        formatted_srt = ""
-        for i, (timestamp, text) in enumerate(translations, start=1):
-            formatted_srt += f"{i}\n{timestamp}\n{text}\n\n"
-        return formatted_srt.strip()
-
-    @staticmethod
     def translate_content(transcript, srt_content, target_languages):
         translations = {}
 
