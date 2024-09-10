@@ -49,18 +49,37 @@ h1 {
 }
 
 /* Download buttons */
-.stDownloadButton > button {
+.stDownloadButton > button,
+.stDownloadButton > button:hover,
+.stDownloadButton > button:active,
+.stDownloadButton > button:focus,
+.stDownloadButton > button:focus:not(:active) {
     border-radius: 5px;
-    background-color: #4CAF50;
-    color: white;
-    width: 200px;
+    background-color: #4CAF50 !important;
+    border-color: #4CAF50 !important;
+    color: white !important;
+    width: 250px;
+    transition: all 0.3s ease;
 }
 
 .stDownloadButton > button:hover {
-    background-color: #2f6f30;
-    border-color: #2f6f30;
-    color: white;
-    width: 200px;
+    background-color: #45a049 !important;
+    border-color: #45a049 !important;
+}
+
+.stDownloadButton > button:active {
+    background-color: #45a049 !important;
+    border-color: #45a049 !important;
+    transform: scale(0.98);
+}
+
+/* Additional styles to override Streamlit's focus styles */
+.stDownloadButton > button:focus::after,
+.stDownloadButton > button:focus::before,
+.stDownloadButton > button:focus:not(:active)::after,
+.stDownloadButton > button:focus:not(:active)::before {
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
 /* Multiselect */

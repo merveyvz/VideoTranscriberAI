@@ -34,8 +34,6 @@ def main():
         video_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi"])
     process_button = st.button("Process Video")
 
-
-
     if process_button and not st.session_state.processed:
         try:
             st.session_state.video_path, st.session_state.transcript, st.session_state.srt_content = process_video_with_progress(
