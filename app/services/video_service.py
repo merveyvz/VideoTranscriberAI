@@ -25,6 +25,19 @@ class VideoService:
             return False
 
     @staticmethod
+    def download_video(url, progress_hook):
+        ydl_opts = {
+            'outtmpl': f'{TEMP_DIR}/%(id)s.%(ext)s',
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'progress_hooks': [progress_hook],
+            'quiet': True,
+            'no_warnings': True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            return f"{TEMP_DIR}/{info['id']}.mp4"
+
+    @staticmethod
     def extract_audio(video_path):
         try:
             audio_path = os.path.join(TEMP_DIR, f"{os.path.splitext(os.path.basename(video_path))[0]}.wav")
@@ -103,4 +116,3 @@ class VideoService:
         ]
         subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
         return thumbnail_path
-

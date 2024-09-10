@@ -91,7 +91,8 @@ def main():
         st.session_state.video_path = None
         st.session_state.transcript = None
         st.session_state.srt_content = None
-        st.session_state.translations = None
+        st.session_state.translations = {}
+        st.session_state.translated_languages = set()
 
     video_source = st.radio("Choose video source:", ("YouTube URL", "Upload Video"))
     if video_source == "YouTube URL":
@@ -110,18 +111,27 @@ def main():
                         video_url if video_source == "YouTube URL" else None,
                         video_file if video_source == "Upload Video" else None
                     )
-                    st.session_state.translations = TranslationService.translate_content(
-                        st.session_state.transcript,
-                        st.session_state.srt_content,
-                        target_languages
-                    )
                     st.session_state.processed = True
 
-            st.subheader("Original Transcript")
+            st.subheader("Transcripts")
             create_language_container("Original", st.session_state.transcript, st.session_state.srt_content)
 
-            for lang, content in st.session_state.translations.items():
-                create_language_container(lang, content["text"], content["srt"])
+            # Translate only newly selected languages
+            new_languages = [lang for lang in target_languages if lang not in st.session_state.translated_languages]
+            if new_languages:
+                with st.spinner("Translating to new languages..."):
+                    new_translations = TranslationService.translate_content(
+                        st.session_state.transcript,
+                        st.session_state.srt_content,
+                        new_languages
+                    )
+                    st.session_state.translations.update(new_translations)
+                    st.session_state.translated_languages.update(new_languages)
+
+            for lang in target_languages:
+                if lang in st.session_state.translations:
+                    content = st.session_state.translations[lang]
+                    create_language_container(lang, content["text"], content["srt"])
 
             st.subheader("Video")
             video_info = VideoService.get_video_info(st.session_state.video_path)
