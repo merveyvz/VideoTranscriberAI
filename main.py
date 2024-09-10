@@ -1,16 +1,11 @@
-import asyncio
 import logging
-import os
-import re
-import shutil
-import uuid
 
 import streamlit as st
-from app.services import AudioService, TranslationService, VideoService
-from app.ui import create_language_container
-from app.config import SUPPORTED_LANGUAGES, TEMP_DIR
-from utils import process_video_with_progress, reset_state, load_css
 
+from app.config import SUPPORTED_LANGUAGES
+from app.services import TranslationService, VideoService
+from app.ui import create_language_container
+from utils import process_video_with_progress, reset_state, load_css
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,21 +19,22 @@ def main():
     if 'processed' not in st.session_state:
         reset_state()
 
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
+    row1, row2 = st.columns(2, vertical_alignment="bottom")
+    with row1:
         video_source = st.radio("Choose video source:", ("YouTube URL", "Upload Video"),
-                                key="video_source")
-        if video_source == "YouTube URL":
-            video_url = st.text_input(label="Enter YouTube URL:", key="video_url", placeholder="https://www.youtube.com/...")
-        else:
-            video_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi"])
-        process_button = st.button("Process Video")
-
-    with col2:
+                            key="video_source")
+    with row2:
         if st.button("Reset"):
             reset_state()
             st.rerun()
+
+    if video_source == "YouTube URL":
+        video_url = st.text_input(label="Enter YouTube URL:", key="video_url", placeholder="https://www.youtube.com/...")
+    else:
+        video_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi"])
+    process_button = st.button("Process Video")
+
+
 
     if process_button and not st.session_state.processed:
         try:
@@ -52,7 +48,6 @@ def main():
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             st.error("Please check the application logs for more details and try again.")
-
 
     target_languages = st.multiselect("Select target languages for translation:", SUPPORTED_LANGUAGES, key="target_languages")
     translation_button = st.button("Translate")

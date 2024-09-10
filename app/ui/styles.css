@@ -1,35 +1,40 @@
 /* Main container */
 .main {
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 2rem;
 }
-
 /* Title */
 h1 {
     font-size: 2.5rem;
     margin-bottom: 2rem;
+    text-align: center;
 }
-
-/* Radio buttons */
+/*
+!* Radio buttons *!
 .stRadio > div {
     flex-direction: row !important;
 }
+*/
 
 /* Text inputs and file uploader */
 .stTextInput > div > div > input,
 .stFileUploader > div > button {
     border-radius: 5px;
+    width: 100%;
 }
 
 /* Buttons */
 .stButton > button {
+    width: 150px;
     border-radius: 5px;
     font-weight: bold;
 }
 
-/* Progress bar */
+/*!* Progress bar *!
 .stProgress > div > div > div {
     background-color: #4CAF50;
-}
+}*/
 
 /* Expander */
 .streamlit-expanderHeader {
@@ -40,6 +45,7 @@ h1 {
 /* Text areas */
 .stTextArea > div > div > textarea {
     border-radius: 5px;
+
 }
 
 /* Download buttons */
@@ -47,15 +53,17 @@ h1 {
     border-radius: 5px;
     background-color: #4CAF50;
     color: white;
+    width: 200px;
+}
+
+.stDownloadButton > button:hover {
+    background-color: #2f6f30;
+    border-color: #2f6f30;
+    color: white;
+    width: 200px;
 }
 
 /* Multiselect */
 .stMultiSelect > div > div > div {
     border-radius: 5px;
-}
-
-.body{
-    text-align: center;
-    align-content: center;
-    justify-content: center;
 }
