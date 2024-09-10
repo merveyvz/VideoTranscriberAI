@@ -130,19 +130,21 @@ def main():
             thumbnail_path = VideoService.generate_thumbnail(st.session_state.video_path)
             st.image(thumbnail_path, caption="Video Thumbnail")
 
-            # Display video information
-            st.write(f"Duration: {video_info['duration']} seconds")
-            st.write(f"Resolution: {video_info['width']}x{video_info['height']}")
-            st.write(f"Format: {video_info['format']}")
+            # Download video button (only for YouTube videos)
+            if video_source == "YouTube URL":
+                # Display video information
+                st.write(f"Duration: {video_info['duration']} seconds")
+                st.write(f"Resolution: {video_info['width']}x{video_info['height']}")
+                st.write(f"Format: {video_info['format']}")
 
-            # Download video button
-            with open(st.session_state.video_path, "rb") as video_file:
-                st.download_button(
-                    label="Download Video",
-                    data=video_file,
-                    file_name="processed_video.mp4",
-                    mime="video/mp4"
-                )
+                # Download video button
+                with open(st.session_state.video_path, "rb") as video_file:
+                    st.download_button(
+                        label="Download Video",
+                        data=video_file,
+                        file_name="processed_video.mp4",
+                        mime="video/mp4"
+                    )
 
         except Exception as e:
             logger.error(f"An error occurred in main: {str(e)}")
