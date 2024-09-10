@@ -1,0 +1,52 @@
+/* Main container */
+.main {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Headers */
+h1, h2, h3 {
+    color: #1E88E5;
+    margin-bottom: 1rem;
+}
+
+/* Inputs */
+.stTextInput > div > div > input {
+    border-radius: 5px;
+}
+
+/* Buttons */
+.stButton > button {
+    border-radius: 5px;
+    background-color: #1E88E5;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+}
+
+.stButton > button:hover {
+    background-color: #1565C0;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    font-weight: bold;
+    color: #1E88E5;
+}
+
+/* Text areas */
+.stTextArea > div > div > textarea {
+    border-radius: 5px;
+}
+
+/* File uploader */
+.stFileUploader > div > button {
+    border-radius: 5px;
+}
+
+/* Multiselect */
+.stMultiSelect > div > div > div {
+    border-radius: 5px;
+}

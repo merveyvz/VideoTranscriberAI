@@ -1,154 +1,159 @@
+import asyncio
+import logging
+import os
 import re
-from pathlib import Path
 
 import streamlit as st
-import os
+from app.services import AudioService, TranslationService, VideoService
+from app.ui import create_language_container
 from app.config import SUPPORTED_LANGUAGES, TEMP_DIR
-from app.services import (download_video, extract_audio, transcribe_audio, translate_text, create_srt,
-                          translate_srt, mux_subtitles, get_video_resolutions, burn_subtitles)
-from utils import save_uploaded_file
 
-st.set_page_config(page_title="Video Translator", page_icon="🎥", layout="wide")
-st.markdown('<style>' + open('static/styles.css').read() + '</style>', unsafe_allow_html=True)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def sanitize_filename(filename):
-    return re.sub(r'[^\w\-_. ]', '_', filename)
+def load_css():
+    with open(os.path.join("app\\ui", "styles.css")) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+
+def is_valid_srt(content):
+    pattern = re.compile(r'\d+\s*\n\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}\s*\n', re.MULTILINE)
+    matches = pattern.findall(content)
+    return len(matches) > 0
+
+
+def download_progress_hook(d):
+    if d['status'] == 'downloading':
+        if 'total_bytes' in d:
+            progress = int(float(d['downloaded_bytes']) / float(d['total_bytes']) * 100)
+            st.session_state.download_progress.progress(progress)
+            st.session_state.download_text.text(f"Downloading: {progress}% complete")
+        else:
+            downloaded = d['downloaded_bytes'] / (1024 * 1024)
+            speed = d.get('speed', 0) / (1024 * 1024)
+            st.session_state.download_text.text(f"Downloading: {downloaded:.1f}MB at {speed:.1f}MB/s")
+    elif d['status'] == 'finished':
+        st.session_state.download_text.text("Download completed. Processing video...")
+
+
+def process_video_with_progress(video_source, video_url=None, video_file=None):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    try:
+        if not VideoService.check_ffmpeg():
+            raise RuntimeError("FFmpeg is not installed or not accessible in the system PATH.")
+
+        status_text.text("Downloading/Processing video...")
+        if video_source == "YouTube URL":
+            st.session_state.download_progress = st.progress(0)
+            st.session_state.download_text = st.empty()
+            video_path = VideoService.download_video(video_url, download_progress_hook)
+            st.session_state.download_progress.empty()
+            st.session_state.download_text.empty()
+        else:
+            video_path = os.path.join("temp", video_file.name)
+            with open(video_path, "wb") as f:
+                f.write(video_file.getbuffer())
+        progress_bar.progress(20)
+
+        status_text.text("Extracting audio...")
+        audio_path = VideoService.extract_audio(video_path)
+        progress_bar.progress(40)
+
+        status_text.text("Transcribing audio...")
+        transcript = AudioService.transcribe_audio(audio_path)
+        progress_bar.progress(60)
+
+        status_text.text("Generating SRT...")
+        srt_content = AudioService.generate_srt(audio_path)
+        progress_bar.progress(80)
+
+        status_text.text("Finalizing...")
+        os.remove(audio_path)
+        progress_bar.progress(100)
+        status_text.text("Processing complete!")
+
+        return video_path, transcript, srt_content
+    except Exception as e:
+        logger.error(f"Error in process_video_with_progress: {str(e)}")
+        raise
 
 
 def main():
-    st.title("Video Translator")
+    st.set_page_config(page_title="Video Transcription and Translation App", layout="wide")
+    load_css()
+    st.title("Video Transcription and Translation App")
 
-    # Initialize session state
-    if 'video_processed' not in st.session_state:
-        st.session_state.video_processed = False
-    if 'video_path' not in st.session_state:
+    if 'processed' not in st.session_state:
+        st.session_state.processed = False
         st.session_state.video_path = None
-    if 'audio_path' not in st.session_state:
-        st.session_state.audio_path = None
-    if 'transcript' not in st.session_state:
         st.session_state.transcript = None
-    if 'translations' not in st.session_state:
-        st.session_state.translations = {}
-    if 'original_srt' not in st.session_state:
-        st.session_state.original_srt = None
-    if 'youtube_url' not in st.session_state:
-        st.session_state.youtube_url = None
+        st.session_state.srt_content = None
+        st.session_state.translations = None
 
-    # Language selection
-    selected_languages = st.multiselect("Select languages for translation", options=SUPPORTED_LANGUAGES)
-
-    # Video input
-    video_source = st.radio("Choose video source", ("Upload video", "YouTube URL"))
-
-    if video_source == "Upload video":
-        uploaded_file = st.file_uploader("Choose a video file", type=['mp4', 'avi', 'mov'])
-        if uploaded_file is not None:
-            st.session_state.video_path = save_uploaded_file(uploaded_file)
+    video_source = st.radio("Choose video source:", ("YouTube URL", "Upload Video"))
+    if video_source == "YouTube URL":
+        video_url = st.text_input("Enter YouTube URL:")
     else:
-        st.session_state.youtube_url = st.text_input("Enter YouTube URL")
-        if st.session_state.youtube_url:
-            resolutions = get_video_resolutions(st.session_state.youtube_url)
-            selected_resolution = st.selectbox("Select video resolution", resolutions)
+        video_file = st.file_uploader("Upload video file", type=["mp4", "mov", "avi"])
 
-    if st.button("Process Video"):
-        if st.session_state.video_path is not None or st.session_state.youtube_url:
-            with st.spinner("Processing video..."):
-                if video_source == "YouTube URL":
-                    st.session_state.video_path = download_video(st.session_state.youtube_url, selected_resolution)
+    target_languages = st.multiselect("Select target languages for translation:", SUPPORTED_LANGUAGES)
 
-                # Extract audio
-                st.session_state.audio_path = extract_audio(st.session_state.video_path)
+    if st.button("Process Video") or st.session_state.processed:
+        try:
+            if not st.session_state.processed:
+                with st.spinner("Processing video..."):
+                    st.session_state.video_path, st.session_state.transcript, st.session_state.srt_content = process_video_with_progress(
+                        video_source,
+                        video_url if video_source == "YouTube URL" else None,
+                        video_file if video_source == "Upload Video" else None
+                    )
+                    st.session_state.translations = TranslationService.translate_content(
+                        st.session_state.transcript,
+                        st.session_state.srt_content,
+                        target_languages
+                    )
+                    st.session_state.processed = True
 
-                # Transcribe audio
-                st.session_state.transcript = transcribe_audio(st.session_state.audio_path)
+            st.subheader("Original Transcript")
+            create_language_container("Original", st.session_state.transcript, st.session_state.srt_content)
 
-                # Translate transcript
-                st.session_state.translations = {}
-                for lang in selected_languages:
-                    st.session_state.translations[lang] = translate_text(st.session_state.transcript, lang)
+            for lang, content in st.session_state.translations.items():
+                create_language_container(lang, content["text"], content["srt"])
 
-                # Generate original SRT
-                st.session_state.original_srt = create_srt(st.session_state.audio_path)
+            st.subheader("Video")
+            video_info = VideoService.get_video_info(st.session_state.video_path)
 
-                st.session_state.video_processed = True
+            # Display video thumbnail
+            thumbnail_path = VideoService.generate_thumbnail(st.session_state.video_path)
+            st.image(thumbnail_path, caption="Video Thumbnail")
 
-    if st.session_state.video_processed:
-        # Display results
-        st.subheader("Original Transcript")
-        st.text_area("Original Transcript", st.session_state.transcript, height=200)
+            # Display video information
+            st.write(f"Duration: {video_info['duration']} seconds")
+            st.write(f"Resolution: {video_info['width']}x{video_info['height']}")
+            st.write(f"Format: {video_info['format']}")
 
-        for lang, translation in st.session_state.translations.items():
-            st.subheader(f"{lang} Translation")
-            st.text_area(f"{lang} Translation", translation, height=200)
+            # Download video button
+            with open(st.session_state.video_path, "rb") as video_file:
+                st.download_button(
+                    label="Download Video",
+                    data=video_file,
+                    file_name="processed_video.mp4",
+                    mime="video/mp4"
+                )
 
-        # Download options
-        st.subheader("Download Options")
-        st.download_button("Download Original Transcript", st.session_state.transcript, "transcript.txt")
-        for lang, translation in st.session_state.translations.items():
-            st.download_button(f"Download {lang} Translation", translation, f"{lang.lower()}_translation.txt")
-
-        # SRT download
-        st.download_button("Download Original SRT", st.session_state.original_srt, "original_subtitles.srt")
-
-        for lang in selected_languages:
-            translated_srt = translate_srt(st.session_state.original_srt, lang)
-            st.download_button(f"Download {lang} SRT", translated_srt, f"{lang.lower()}_subtitles.srt")
-
-            st.subheader("Download Video with Subtitles")
-            selected_lang_for_video = st.selectbox("Select language for video subtitles",
-                                                   ["Original"] + list(st.session_state.translations.keys()))
-
-            if st.button("Generate Video with Subtitles"):
-                with st.spinner("Generating video with subtitles... This may take a few minutes."):
-                    try:
-                        if selected_lang_for_video == "Original":
-                            srt_content = st.session_state.original_srt
-                        else:
-                            srt_content = translate_srt(st.session_state.original_srt, selected_lang_for_video)
-
-                        if srt_content:
-                            srt_filename = sanitize_filename(f"subtitles_{selected_lang_for_video}.srt")
-                            srt_path = Path(TEMP_DIR) / srt_filename
-                            srt_path.write_text(srt_content, encoding="utf-8")
-
-                            st.text(f"SRT file created: {srt_path}")
-                            st.text(f"SRT file size: {srt_path.stat().st_size} bytes")
-
-                            output_filename = sanitize_filename(f"video_with_{selected_lang_for_video}_subtitles.mp4")
-                            output_video_path = Path(TEMP_DIR) / output_filename
-                            burn_subtitles(st.session_state.video_path, str(srt_path), str(output_video_path))
-
-                            st.text(f"Output video created: {output_video_path}")
-                            st.text(f"Output video size: {output_video_path.stat().st_size} bytes")
-
-                            with output_video_path.open("rb") as f:
-                                st.success(
-                                    "Video processing complete! You can now download the video with burned-in subtitles.")
-                                st.download_button(
-                                    f"Download Video with {selected_lang_for_video} Subtitles",
-                                    f,
-                                    file_name=output_filename,
-                                    mime="video/mp4"
-                                )
-                            st.info(
-                                "The video has been processed with H.264 video codec and AAC audio codec. The subtitles have been burned directly into the video and should be visible on all players.")
-                        else:
-                            st.error("Failed to generate SRT content. Please try processing the video again.")
-                    except Exception as e:
-                        st.error(f"An error occurred: {str(e)}")
-                        st.error("Please check the console for more detailed error information.")
-                        st.error(
-                            "If the problem persists, please ensure FFmpeg is correctly installed and supports libx264 and AAC encoding.")
-
-                        # Print additional debugging information
-                        st.text("Debugging Information:")
-                        st.text(f"TEMP_DIR: {TEMP_DIR}")
-                        st.text(f"Video path: {st.session_state.video_path}")
-                        st.text(f"SRT path: {srt_path if 'srt_path' in locals() else 'Not created'}")
-                        st.text(
-                            f"Output video path: {output_video_path if 'output_video_path' in locals() else 'Not created'}")
-                        st.text(f"Files in TEMP_DIR: {list(Path(TEMP_DIR).glob('*'))}")
+        except Exception as e:
+            logger.error(f"An error occurred in main: {str(e)}")
+            if "FFmpeg is not installed" in str(e):
+                st.error(
+                    "FFmpeg is not installed or not accessible. Please install FFmpeg and add it to your system PATH.")
+                st.error("You can download FFmpeg from: https://ffmpeg.org/download.html")
+                st.error("After installation, you may need to restart your computer.")
+            else:
+                st.error(f"An error occurred: {str(e)}")
+            st.error("Please check the application logs for more details and try again.")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 streamlit~=1.38.0
 python-dotenv~=1.0.1
 openai~=1.43.0
-ffmpeg-python~=0.2.0
 yt-dlp~=2024.4.9
 pysrt==1.1.2
 asyncio~=3.4.3
 aiohttp~=3.10.5
+pydub~=0.25.1
