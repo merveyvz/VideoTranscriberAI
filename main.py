@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import uuid
 
 import streamlit as st
 from app.services import AudioService, TranslationService, VideoService
@@ -104,15 +105,27 @@ def reset_state():
     st.session_state.transcript = None
     st.session_state.srt_content = None
     st.session_state.translations = {}
-    st.session_state.translated_languages = set()
     st.session_state.video_source = "YouTube URL"
     st.session_state.video_url = ""
     st.session_state.target_languages = []
+    st.session_state.thumbnail_path = None
+    st.session_state.video_info = None
+
+
+def display_translations():
+    st.subheader("Transcripts and Translations")
+
+    # Display original transcript
+    if st.session_state.transcript and st.session_state.srt_content:
+        create_language_container("Original", st.session_state.transcript, st.session_state.srt_content)
+
+    # Display translations
+    for lang, content in st.session_state.translations.items():
+        create_language_container(lang, content["text"], content["srt"])
 
 
 def main():
     st.set_page_config(page_title="Video Transcription and Translation App", layout="wide")
-    load_css()
     st.title("Video Transcription and Translation App")
 
     # Initialize session state if it doesn't exist
@@ -135,7 +148,33 @@ def main():
     target_languages = st.multiselect("Select target languages for translation:", SUPPORTED_LANGUAGES,
                                       key="target_languages")
 
-    if st.button("Process Video") or st.session_state.processed:
+    col1, col2 = st.columns(2)
+    with col1:
+        process_button = st.button("Process Video")
+    with col2:
+        translate_button = st.button("Translate")
+
+    if translate_button and st.session_state.processed:
+        with st.spinner("Translating..."):
+            # Identify new languages to translate
+            new_languages = [lang for lang in target_languages if lang not in st.session_state.translations]
+
+            if new_languages:
+                new_translations = TranslationService.translate_content(
+                    st.session_state.transcript,
+                    st.session_state.srt_content,
+                    new_languages
+                )
+                st.session_state.translations.update(new_translations)
+
+            # Remove translations for deselected languages
+            languages_to_remove = set(st.session_state.translations.keys()) - set(target_languages)
+            for lang in languages_to_remove:
+                del st.session_state.translations[lang]
+
+    display_translations()
+
+    if process_button or st.session_state.processed:
         try:
             if not st.session_state.processed:
                 with st.spinner("Processing video..."):
@@ -145,42 +184,15 @@ def main():
                         video_file if video_source == "Upload Video" else None
                     )
                     st.session_state.processed = True
-
-            st.subheader("Transcripts")
-            create_language_container("Original", st.session_state.transcript, st.session_state.srt_content)
-
-            # Translate only newly selected languages
-            new_languages = [lang for lang in target_languages if lang not in st.session_state.translated_languages]
-            if new_languages:
-                with st.spinner("Translating to new languages..."):
-                    new_translations = TranslationService.translate_content(
-                        st.session_state.transcript,
-                        st.session_state.srt_content,
-                        new_languages
-                    )
-                    st.session_state.translations.update(new_translations)
-                    st.session_state.translated_languages.update(new_languages)
-
-            for lang in target_languages:
-                if lang in st.session_state.translations:
-                    content = st.session_state.translations[lang]
-                    create_language_container(lang, content["text"], content["srt"])
+                    st.session_state.video_info = VideoService.get_video_info(st.session_state.video_path)
+                    st.session_state.thumbnail_path = VideoService.generate_thumbnail(st.session_state.video_path)
 
             st.subheader("Video")
-            video_info = VideoService.get_video_info(st.session_state.video_path)
-
-            # Display video thumbnail
-            thumbnail_path = VideoService.generate_thumbnail(st.session_state.video_path)
-            st.image(thumbnail_path, caption="Video Thumbnail")
+            if st.session_state.thumbnail_path:
+                st.image(st.session_state.thumbnail_path, caption="Video Thumbnail", width=300)
 
             # Download video button (only for YouTube videos)
-            if video_source == "YouTube URL":
-                # Display video information
-                st.write(f"Duration: {video_info['duration']} seconds")
-                st.write(f"Resolution: {video_info['width']}x{video_info['height']}")
-                st.write(f"Format: {video_info['format']}")
-
-                # Download video button
+            if video_source == "YouTube URL" and st.session_state.video_path:
                 with open(st.session_state.video_path, "rb") as video_file:
                     st.download_button(
                         label="Download Video",
@@ -191,13 +203,7 @@ def main():
 
         except Exception as e:
             logger.error(f"An error occurred in main: {str(e)}")
-            if "FFmpeg is not installed" in str(e):
-                st.error(
-                    "FFmpeg is not installed or not accessible. Please install FFmpeg and add it to your system PATH.")
-                st.error("You can download FFmpeg from: https://ffmpeg.org/download.html")
-                st.error("After installation, you may need to restart your computer.")
-            else:
-                st.error(f"An error occurred: {str(e)}")
+            st.error(f"An error occurred: {str(e)}")
             st.error("Please check the application logs for more details and try again.")
 
 
